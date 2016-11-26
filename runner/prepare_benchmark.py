@@ -89,6 +89,8 @@ def parse_args():
       help="Access key ID for AWS")
   parser.add_option("-k", "--aws-key",
       help="Access key for AWS")
+  parser.add_option("-R", "--aws-role",
+      help="Role for AWS")
 
   parser.add_option("--skip-s3-import", action="store_true", default=False,
       help="Assumes s3 data is already loaded")
@@ -124,8 +126,8 @@ def parse_args():
                         opts.redshift_password is None or
                         opts.redshift_host is None or
                         opts.redshift_database is None or
-                        opts.aws_key_id is None or
-                        opts.aws_key is None):
+                        (opts.aws_key_id is None or
+                        opts.aws_key is None) and opts.aws_role is None):
     print >> stderr, \
         "Redshift requires host, username, password, db, and AWS credentials"
     sys.exit(1)
@@ -529,10 +531,14 @@ def prepare_redshift_dataset(opts):
     port = 5439,
     socket_timeout=60 * 45)
   cursor = conn.cursor()
-  cred = "CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'" % (
-      opts.aws_key_id,
-      opts.aws_key)
-
+  if opts.aws_role:
+    cred = "CREDENTIALS 'aws_iam_role=%s'" % (
+        opts.aws_role)
+  
+  else:
+    cred = "CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'" % (
+        opts.aws_key_id,
+        opts.aws_key)
   try:
     cursor.execute("DROP TABLE rankings;")
   except Exception:
